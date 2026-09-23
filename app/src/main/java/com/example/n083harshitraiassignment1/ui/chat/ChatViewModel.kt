@@ -1,12 +1,15 @@
 package com.example.n083harshitraiassignment1.ui.chat
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.n083harshitraiassignment1.BuildConfig
 import com.example.n083harshitraiassignment1.data.ChatDatabase
 import com.example.n083harshitraiassignment1.data.GeminiRepository
 import com.example.n083harshitraiassignment1.data.LocalChatRepository
+import com.example.n083harshitraiassignment1.data.SecureApiKeyStorage
+import com.example.n083harshitraiassignment1.data.UserPreferencesRepository
 import com.example.n083harshitraiassignment1.model.ChatMessage
 import com.example.n083harshitraiassignment1.model.ChatUiState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,22 +18,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class ChatViewModel(
-    application: Application
-) : AndroidViewModel(application) {
-
-    private val database =
-        ChatDatabase.getDatabase(application)
-
-    private val localRepository =
-        LocalChatRepository(
-            database.chatDao()
-        )
-
-    private val geminiRepository =
+class ChatViewModel @JvmOverloads constructor(
+    application: Application,
+    private val localRepository: LocalChatRepository =
+        LocalChatRepository(ChatDatabase.getDatabase(application).chatDao()),
+    private val secureStorage: SecureApiKeyStorage =
+        SecureApiKeyStorage(application),
+    private val userPreferencesRepository: UserPreferencesRepository =
+        UserPreferencesRepository(application),
+    private val geminiRepository: GeminiRepository =
         GeminiRepository(
-            BuildConfig.GEMINI_API_KEY
+            secureStorage.getDecryptedApiKey(BuildConfig.GEMINI_API_KEY)
         )
+) : AndroidViewModel(application) {
 
     private val _uiState =
         MutableStateFlow(
@@ -41,8 +41,19 @@ class ChatViewModel(
         _uiState.asStateFlow()
 
     init {
-
         observeMessages()
+        observePreferences()
+    }
+
+    private fun observePreferences() {
+        viewModelScope.launch {
+            userPreferencesRepository.userPreferencesFlow.collectLatest { prefs ->
+                _uiState.value = _uiState.value.copy(
+                    userName = prefs.userName,
+                    tone = prefs.preferredTone
+                )
+            }
+        }
     }
 
     private fun observeMessages() {
@@ -125,6 +136,8 @@ class ChatViewModel(
                     )
 
             } catch (exception: Exception) {
+
+                Log.e("ChatViewModel", "Error in sendMessage", exception)
 
                 _uiState.value =
                     _uiState.value.copy(

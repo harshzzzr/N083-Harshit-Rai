@@ -1,22 +1,29 @@
 package com.example.n083harshitraiassignment1.data
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-class GeminiRepository(
+open class GeminiRepository(
     private val apiKey: String
 ) {
 
-    suspend fun generateResponse(
+    companion object {
+        private const val TAG = "GeminiRepository"
+    }
+
+    open suspend fun generateResponse(
         prompt: String
     ): String = withContext(Dispatchers.IO) {
 
         val url = URL(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$apiKey"
         )
+
+        Log.d(TAG, "Requesting Gemini response for: $prompt")
 
         val connection =
             url.openConnection() as HttpURLConnection
@@ -80,6 +87,8 @@ class GeminiRepository(
             val responseCode =
                 connection.responseCode
 
+            Log.d(TAG, "Gemini HTTP response code: $responseCode")
+
             val responseText =
                 if (responseCode in 200..299) {
 
@@ -100,7 +109,7 @@ class GeminiRepository(
                 }
 
             if (responseCode !in 200..299) {
-
+                Log.e(TAG, "Gemini API error ($responseCode): $responseText")
                 throw Exception(
                     "Gemini API Error $responseCode: $responseText"
                 )
@@ -135,9 +144,16 @@ class GeminiRepository(
                 return@withContext "Gemini returned no text."
             }
 
-            val text =
-                parts.getJSONObject(0)
-                    .optString("text")
+            var text = ""
+            for (i in 0 until parts.length()) {
+                val candidateText = parts.getJSONObject(i).optString("text")
+                if (candidateText.isNotBlank()) {
+                    text = candidateText
+                    break
+                }
+            }
+
+            Log.d(TAG, "Gemini response text: $text")
 
             if (text.isBlank()) {
                 "Gemini returned an empty response."

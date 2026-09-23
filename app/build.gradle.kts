@@ -17,8 +17,8 @@ if (localPropertiesFile.exists()) {
 }
 
 val geminiApiKey =
-    localProperties.getProperty("GEMINI_API_KEY")
-        ?: System.getenv("GEMINI_API_KEY")
+    localProperties.getProperty("GEMINI_API_KEY")?.trim()
+        ?: System.getenv("GEMINI_API_KEY")?.trim()
         ?: ""
 
 android {
@@ -71,6 +71,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -117,11 +123,15 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-
+    // Preferences DataStore
+    implementation("androidx.datastore:datastore-preferences:1.1.3")
 
     // Unit Tests
     testImplementation(
         libs.junit
+    )
+    testImplementation(
+        "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1"
     )
 
     // Android Tests

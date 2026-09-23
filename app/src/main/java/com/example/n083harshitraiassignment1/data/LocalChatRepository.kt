@@ -3,21 +3,21 @@ package com.example.n083harshitraiassignment1.data
 import com.example.n083harshitraiassignment1.model.ChatMessage
 import kotlinx.coroutines.flow.Flow
 
-class LocalChatRepository(
+open class LocalChatRepository(
     private val chatDao: ChatDao
 ) {
 
-    fun getMessages(): Flow<List<ChatMessage>> {
+    open fun getMessages(): Flow<List<ChatMessage>> {
         return chatDao.getAllMessages()
     }
 
-    suspend fun saveMessage(
+    open suspend fun saveMessage(
         message: ChatMessage
     ) {
         chatDao.insertMessage(message)
     }
 
-    suspend fun clearMessages() {
+    open suspend fun clearMessages() {
         chatDao.deleteAllMessages()
     }
 }
